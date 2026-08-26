@@ -1,7 +1,8 @@
 # 制图规范详解（SPEC）
 
-> 供 mapcraft（制图小助手）Skill 驱动的字段级 schema。**唯一事实源在主仓库**；本文件只描述协作方需要知道的内容，不复制主仓库解析代码。
+> 供 mapcraft（制图助手）Skill 驱动的字段级 schema。**唯一事实源在主仓库**；本文件只描述协作方需要知道的内容，不复制主仓库解析代码。
 > 若发现本文件与主仓库 `shared/map-parser` + `shared/types` 冲突，以主仓库为准并在合并时重跑校验。
+> 主仓库位于```https://github.com/Dai-Yizhou/tycoon-game```，**制图者对主仓库仅有只读权限**。
 
 ---
 
