@@ -1,0 +1,13 @@
+{
+  "id": "start-bonus",
+  "effects": [
+    {
+      "weight": 1,
+      "exclusive": false,
+      "msg": { "zh-CN": "市政厅出发加薪：+10 现金", "en-US": "Departure bonus: +10 money" },
+      "ops": [
+        { "type": "value", "target": "single", "delta": { "player": { "money": 10 } } }
+      ]
+    }
+  ]
+}
