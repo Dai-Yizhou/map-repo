@@ -98,8 +98,8 @@
 | `supply` | `behaviorPass`（下拉）、`behaviorLand`（下拉），均必填 |
 | `event` | `behaviorLand`（下拉） |
 | `monument` | `repairCost`（UCT） |
-| `property` | `price`（UCT）、`rent[]`（UCT 数组）、`upgradeCost[]`（UCT 数组）、`maxLevel`、`maxOwnerCount`、可选 `buyInMultiplier` |
-| `investment` | `price`（UCT）、`maxOwnerCount`、可选 `buyInMultiplier`、`investmentTriggers[]` |
+| `property` | `price`（UCT）、`rent[]`（UCT 数组）、`upgradeCost[]`（UCT 数组）、`maxLevel`、`maxOwnerCount` |
+| `investment` | `price`（UCT）、`maxOwnerCount`、`investmentTriggers[]` |
 | `jail` | `jailCooldown`（毫秒）、`jailCost`（UCT） |
 | `transport` | 无额外专属字段（使用公共 `teleportDestinations`） |
 
@@ -123,10 +123,6 @@
 `any-player-lands-event` | `any-player-lands-monument` | `shareholder-bankrupt` | `day-started` | `night-started`
 
 如需新增触发时机，须向开发者申请，不得臆造事件名。
-
-### 5.7 可选字段 buyInMultiplier
-
-`property` 与 `investment` 支持可选 `buyInMultiplier`（合租买入乘数）。面板通过“启用”复选框控制：勾选后输入数值并导出该字段，取消勾选则导出时省略。
 
 ## 六、导出格式（新格式要点）
 

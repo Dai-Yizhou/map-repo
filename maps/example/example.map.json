@@ -7,6 +7,7 @@
     "destinations": [1, 4],
     "regionId": "r1",
     "timezone": 0,
+    "theme": "northeast",
     "behaviorPass": "start-bonus",
     "behaviorLand": "start-bonus"
   },
@@ -18,8 +19,8 @@
     "destinations": [2],
     "regionId": "r1",
     "timezone": 0,
+    "theme": "northeast",
     "maxOwnerCount": 5,
-    "buyInMultiplier": 1,
     "price": { "player": { "money": -100 } },
     "maxLevel": 3,
     "rent": [
@@ -42,6 +43,7 @@
     "destinations": [3],
     "regionId": "r1",
     "timezone": 0,
+    "theme": "northeast",
     "behaviorPass": "supply-pass",
     "behaviorLand": "supply-land"
   },
@@ -53,6 +55,7 @@
     "destinations": [5],
     "regionId": "r1",
     "timezone": 0,
+    "theme": "northeast",
     "repairCost": { "player": { "money": -20, "credit": 5 }, "region": { "pros": 10 } }
   },
   {
@@ -63,6 +66,7 @@
     "destinations": [1, 5],
     "regionId": "r2",
     "timezone": 0,
+    "theme": "northeast",
     "teleportDestinations": [
       { "cellid": 6, "cost": { "player": { "money": -10 } } }
     ]
@@ -75,6 +79,7 @@
     "destinations": [6, 7],
     "regionId": "r1",
     "timezone": 0,
+    "theme": "northeast",
     "behaviorLand": "event-lottery"
   },
   {
@@ -85,8 +90,8 @@
     "destinations": [7],
     "regionId": "r2",
     "timezone": 0,
+    "theme": "northeast",
     "maxOwnerCount": 8,
-    "buyInMultiplier": 1,
     "price": { "player": { "money": -80, "env": -3 } },
     "investmentTriggers": [
       { "id": "div-on-event", "on": "any-player-lands-event", "delta": { "player": { "money": 5, "env": 1 } } },
@@ -101,6 +106,7 @@
     "destinations": [0],
     "regionId": "r2",
     "timezone": 0,
+    "theme": "northeast",
     "jailCooldown": 8000,
     "jailCost": { "player": { "credit": -3 } }
   }

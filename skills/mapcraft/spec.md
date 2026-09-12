@@ -65,8 +65,15 @@
   // —— 昼夜周期（分钟，整数）——
   "dayNightCycle": 24,
 
+  // —— 昼夜 UCT 增量（可选）：切到白天/夜晚时对区域字段各施加一次增量，符号写在数据里 ——
+  "dayNight": { "day": { "region": { "pros": 20 } }, "night": { "region": { "pros": -20 } } },
+
   // —— 骰子 ——
   "dice": { "cooldownMs": 3000, "min": 1, "max": 3 },
+
+  // —— 实时榜单（可选）——
+  "ranking": { "enabled": true, "topN": 5, "refreshMs": 1000,
+               "score": { "constant": 0, "player": { "money": 1, "credit": 0.5 }, "region": { "pros": 0 } } },
 
   // —— 计税 ——
   "tax": {
@@ -90,7 +97,8 @@
 
 - `valueFieldDefinitions` 只描述字段架构（`min/max` 用于截断）；初值由 `playerInitial`（玩家）与 `regions[].initial`（区域）提供，**不重复**。
 - `regions[]` **不**记录所辖格子（由各格 `regionId` 聚合）、**无颜色概念**。
-- **昼夜繁荣度**：`dayNightCycle` 只决定周期分钟数；区域繁荣初值来自 `regions[].initial.pros`。夜晚自动降低、白天自动恢复的衰减/恢复系数、以及繁荣度对租金/事件概率的影响系数，属于**服务端配置**（非地图字段）。协作者**不得臆造** `nightDecayFactor` 之类的字段；若需要自定义，上报开发者。
+- **昼夜（`dayNightCycle` 与可选 `dayNight`）**：`dayNightCycle` 只决定周期分钟数；区域繁荣初值来自 `regions[].initial.pros`。**可选的 `dayNight`** 在切换白天/夜晚时对区域字段各施加一次 UCT 增量（`day:{region:{...}}` / `night:{region:{...}}`，符号写在数据里），**属于地图字段，可直接配置**。除此之外的"衰减/恢复系数、更新频率、繁荣度对租金/事件概率的影响系数"属于**服务端配置**；协作者**不得臆造** `nightDecayFactor` 之类的字段，若有需要上报开发者。
+- **实时榜单（可选 `ranking`）**：`{ enabled, topN, refreshMs, score:{ constant, player:{<字段>→权重}, region:{<字段>→权重} } }`。未配置则不启用榜单。
 
 ---
 
@@ -103,8 +111,11 @@ id, x, y,
 type(= empty|supply|monument|property|investment|jail|transport|event),
 name({zh-CN,en-US}), description({zh-CN,en-US}),
 destinations(有向边 number[]),
-regionId(必须存在于 map-meta.regions), timezone(UTC 偏移分钟,字面量)
+regionId(必须存在于 map-meta.regions), timezone(UTC 偏移分钟,字面量),
+theme(设计令牌 id，string 必填)
 ```
+
+> **`theme`**：必填 string，指定该格使用的主题令牌 id（如 `northeast` / `south` / `midwest` / `west`，见主仓库 `packages/shared/design-tokens/themes/*.json`）。主仓库 `Cell` 类型将其声明为必填；空白会导致客户端主题渲染缺失，务必填写。
 
 ### 3.1.1 字段责任归属（哪些**不适合 agent 手填**）
 
@@ -113,7 +124,7 @@ regionId(必须存在于 map-meta.regions), timezone(UTC 偏移分钟,字面量)
 | 字段 | 生产方式 | 说明 |
 |---|---|---|
 | `id` | 编辑器自动连续编号 | agent 如需编号需符合唯一连续 |
-| `x` / `y` | **协作者在可视化编辑器**（`config_editors/map_editor_v02`）拖拽/点击画布生成 | agent **不手填精确坐标**。agent 产出的格子坐标只作初值/意图占位（如隐藏格 `900,900`），**正式排布以协作者在编辑器拖拽后的导出结果为准** |
+| `x` / `y` | **协作者在可视化编辑器**（`map-editor-v02/`）拖拽/点击画布生成 | agent **不手填精确坐标**。agent 产出的格子坐标只作初值/意图占位（如隐藏格 `900,900`），**正式排布以协作者在编辑器拖拽后的导出结果为准** |
 | `destinations` | 编辑器连线生成 | agent 只说明"谁连到谁"的连通意图，最终连线由协作者在编辑器里拉出，除非协作者明确需要单向边 |
 
 **文本字段（`name` / `description` / `msg`）——体现地图气质，归协作者掌控**：
@@ -128,13 +139,13 @@ regionId(必须存在于 map-meta.regions), timezone(UTC 偏移分钟,字面量)
 | `empty` | — | 可有 description，零效果 |
 | `supply` | `behaviorPass`、`behaviorLand`（均必填） | 经过=A；踩中=A→B |
 | `monument` | `repairCost`(UCT) | 踩中可选修缮一次；符号内嵌 |
-| `property` | `price`、`rent[]`、`upgradeCost[]`、`maxLevel`、`maxOwnerCount`、可选 `buyInMultiplier` | 踩中可购/升；不持股者踩中按 `rent[level]` 扣款→股东按股比分 |
-| `investment` | `price`、`maxOwnerCount`、可选 `buyInMultiplier`、`investmentTriggers[]` | 条件触发，不限位置 |
+| `property` | `price`、`rent[]`、`upgradeCost[]`、`maxLevel`、`maxOwnerCount` | 踩中可购/升；不持股者踩中按 `rent[level]` 扣款→股东按股比分 |
+| `investment` | `price`、`maxOwnerCount`、`investmentTriggers[]` | 条件触发，不限位置 |
 | `jail` | `jailCooldown`、`jailCost`(UCT) | 入狱：冷却+、扣 credit、禁用收款 |
 | `transport` | `teleportDestinations[]` | 停靠可选传送 |
 | `event` | `behaviorLand` | 踩中按行为 effects 触发 |
 
-> `buyInMultiplier`：合租买入乘数（可选）；单人持股价 = `price × multiplier`。
+> **合租（持股比例）无乘数字段**：地产/投资的合租持股比例 = 该玩家本次实际支付金额 ÷ 该项目累计投入金额（见主仓库 `Ownership.addOwnership`）。**不存在 `buyInMultiplier` 字段**——旧版该字段已被主仓库从 schema 移除，解析时若出现直接报错，禁止填写。
 > 起点**不是** `start` 类型，由 `map-meta.startCellId` 指定。
 
 ### 3.3 property / investment / transport / monument 示例字段
@@ -145,7 +156,7 @@ regionId(必须存在于 map-meta.regions), timezone(UTC 偏移分钟,字面量)
   "name": { "zh-CN": "东区地皮", "en-US": "East Plot" },
   "description": { "zh-CN": "经典地产", "en-US": "Classic property" },
   "destinations": [2], "regionId": "r1", "timezone": 0,
-  "maxOwnerCount": 5, "buyInMultiplier": 1,
+  "maxOwnerCount": 5,
   "price":  { "player": { "money": -100 } },
   "maxLevel": 3,
   "rent": [ { "player": { "money": -10 } }, { "player": { "money": -20 } },

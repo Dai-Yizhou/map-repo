@@ -8,8 +8,8 @@
 | `empty` | 无 | 什么都不做，可有描述 | — |
 | `supply` | 经过/踩中 | 经过触发 A（`behaviorPass`）；踩中先 A 再 B（`behaviorLand`） | `behaviorPass`、`behaviorLand`（均必填） |
 | `monument` | 踩中（可选） | 可选修缮一次：付 `repairCost`，得信用、区域繁荣升 | `repairCost`（UCT） |
-| `property` | 踩中（可选） | 未持股可购；持有可升（`upgradeCost`）；他人踩中按持股分红（`rent`） | `maxOwnerCount`、`buyInMultiplier`、`price`、`maxLevel`、`rent[]`、`upgradeCost[]` |
-| `investment` | 条件触发 | 可购；持有者在条件触发时收/付（与位置无关） | `maxOwnerCount`、`buyInMultiplier`、`price`、`investmentTriggers[]` |
+| `property` | 踩中（可选） | 未持股可购；持有可升（`upgradeCost`）；他人踩中按持股分红（`rent`） | `maxOwnerCount`、`price`、`maxLevel`、`rent[]`、`upgradeCost[]` |
+| `investment` | 条件触发 | 可购；持有者在条件触发时收/付（与位置无关） | `maxOwnerCount`、`price`、`investmentTriggers[]` |
 | `jail` | 踩中 | 已实现：延长 cooldown、降信用、期间禁用收款 | `jailCooldown`、`jailCost` |
 | `transport` | 踩中选路 | 普通相邻格可去；停靠时可选传送（付费，不掷骰） | `teleportDestinations[]` |
 | `event` | 踩中 | 按加权随机触发行为 | `behaviorLand` |
@@ -36,7 +36,7 @@
 - 踩中且未持股且未满 `maxOwnerCount`：可选购买，支付 `price`。
 - 踩中且已持股且未满 `maxLevel`：可选升级，支付 `upgradeCost[当前级]`。
 - 任一不持股玩家踩中 → 向**所有持股且未被禁用收款的玩家**分发 `rent[当前级]`。
-- 单人持股价 = `price × buyInMultiplier`；合租按股比计算。
+- 合租持股比例 = 该玩家本次实际支付金额 ÷ 该项目累计投入金额（**无 `buyInMultiplier` 乘数字段**，该字段已在主仓库移除，填写即报错）。
 - 升级费用是数组，下标=目标等级，例 `upgradeCost[0]` 升到 1 级。
 
 ### `investment`

@@ -19,7 +19,9 @@
 | `startCellId` | 玩家出生格 id（此处 = 格子 0，类型 `supply`，起跑加分）。 |
 | `regions` | 区域表。每项含 id、i18n 名、区域 UCT 初值（如 `pros: 50`）。格子的 `regionId` 必须指向这里。 |
 | `dayNightCycle` | 昼夜周期（分钟）。`24` = 一个完整昼夜循环 24 分钟，白天/夜晚各半。 |
+| `dayNight` | 可选：昼夜切换时对区域 UCT 字段各施加一次增量（`day` 进白天 `region.pros +20`，`night` 进夜晚 `region.pros -20`）。 |
 | `dice` | 掷骰配置：`cooldownMs` 冷却、`min/max` 步数范围。 |
+| `ranking` | 可选：实时榜单配置（`enabled`、`topN`、`refreshMs`、`score` 各字段权重）。 |
 | `tax` | 计税：`baseTax`（按玩家 UCT 字段逐字段征，`rates` 为 `{"player":{field:rate}}` 且 rate∈[0,1]、`exemptBelow` 字段低于阈值免）、`shareTax`（按持股数量征，`rates` 每股应税额、`exemptBelow` 总持股低于则免）；各自 `taxInterval` 为计税周期（毫秒）。 |
 
 ## `example.map.json`（格子表）

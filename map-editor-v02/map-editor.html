@@ -114,7 +114,6 @@
             display: inline-flex; align-items: center; gap: 6px;
             font-size: 12px; color: #9ca3af; cursor: pointer; margin-right: 10px; white-space: nowrap;
         }
-        .panel .bim { display: flex; align-items: center; gap: 8px; }
         /* UCT 编辑器 */
         .uct-editor { background: #0f1117; border: 1px solid #232634; border-radius: 6px; padding: 8px; }
         .uct-group { margin-bottom: 6px; }
@@ -341,7 +340,6 @@
             c.investmentTriggers = Array.isArray(r.investmentTriggers)
                 ? r.investmentTriggers.map(t => ({ id: str(t && t.id), on: str(t && t.on), delta: normalizeUct(t && t.delta) }))
                 : [];
-            if (r.buyInMultiplier !== undefined) c.buyInMultiplier = num(r.buyInMultiplier, 0);
             return c;
         }
 
@@ -376,12 +374,10 @@
                     out.maxLevel = num(c.maxLevel, 0);
                     out.rent = uctArrayExport(c.rent);
                     out.upgradeCost = uctArrayExport(c.upgradeCost);
-                    if (c.buyInMultiplier !== undefined) out.buyInMultiplier = num(c.buyInMultiplier, 0);
                     break;
                 case 'investment':
                     out.price = cleanUct(c.price);
                     out.maxOwnerCount = num(c.maxOwnerCount, 0);
-                    if (c.buyInMultiplier !== undefined) out.buyInMultiplier = num(c.buyInMultiplier, 0);
                     out.investmentTriggers = triggersExport(c.investmentTriggers);
                     break;
                 case 'jail':
@@ -1074,16 +1070,6 @@
             return html;
         }
 
-        function buyInMultiplierHtml(cell) {
-            const enabled = cell.buyInMultiplier !== undefined;
-            let html = '<div class="section"><label>合租买入乘数 buyInMultiplier（可选）</label>';
-            html += '<div class="bim">';
-            html += '<label class="toggle"><input type="checkbox" data-action="toggle-bim"' + (enabled ? ' checked' : '') + '> 启用</label>';
-            html += enabled ? '<input type="number" class="num" data-path="buyInMultiplier" step="any" value="' + num(cell.buyInMultiplier, 0) + '">' : '';
-            html += '</div></div>';
-            return html;
-        }
-
         function teleportsEditorHtml() {
             const cell = currentCell();
             const arr = Array.isArray(cell.teleportDestinations) ? cell.teleportDestinations : [];
@@ -1168,11 +1154,9 @@
                 html += '<div class="section"><label>最大等级 maxLevel</label><input type="number" class="num" data-path="maxLevel" value="' + num(cell.maxLevel, 0) + '"></div>';
                 html += '<div class="section"><label>最大股东数 maxOwnerCount</label><input type="number" class="num" data-path="maxOwnerCount" value="' + num(cell.maxOwnerCount, 0) + '"></div>';
                 html += '</div>';
-                html += buyInMultiplierHtml(cell);
             } else if (t === 'investment') {
                 html += '<div class="section"><label>购入价 price（UCT）</label>' + uctEditorHtml(cell.price, 'price') + '</div>';
                 html += '<div class="section"><label>最大股东数 maxOwnerCount</label><input type="number" class="num" data-path="maxOwnerCount" value="' + num(cell.maxOwnerCount, 0) + '"></div>';
-                html += buyInMultiplierHtml(cell);
                 html += triggersEditorHtml();
             } else if (t === 'jail') {
                 html += '<div class="section"><label>入狱冷却 jailCooldown（毫秒）</label><input type="number" class="num" data-path="jailCooldown" value="' + num(cell.jailCooldown, 0) + '"></div>';
@@ -1241,18 +1225,6 @@
             showPanel(cell);
         }
 
-        function toggleBim() {
-            const cell = currentCell();
-            if (!cell) return;
-            if (cell.buyInMultiplier === undefined) {
-                cell.buyInMultiplier = 1;
-            } else {
-                delete cell.buyInMultiplier;
-            }
-            commitAction();
-            showPanel(cell);
-        }
-
         (function bindPanelEvents() {
             const panel = document.getElementById('propertyPanel');
             panel.addEventListener('input', (e) => {
@@ -1266,15 +1238,12 @@
                     updateFromInput(el);
                     commitAction();
                     if (el.dataset.path === 'type') showPanel(currentCell());
-                } else if (el.dataset.action === 'toggle-bim') {
-                    toggleBim();
                 }
             });
             panel.addEventListener('click', (e) => {
                 const el = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
                 if (!el) return;
                 const action = el.dataset.action;
-                if (action === 'toggle-bim') return; // 由 change 事件处理，避免重复触发
                 if (action === 'remove') removeRow(el.dataset.key, parseInt(el.dataset.index, 10));
                 else if (action === 'add-uct') addUctRow(el.dataset.key);
                 else if (action === 'add-teleport') addTeleportRow();
