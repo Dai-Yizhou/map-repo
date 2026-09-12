@@ -1,0 +1,13 @@
+[
+  {
+    "id": 0, "x": 0, "y": 0,
+    "type": "supply",
+    "name": { "zh-CN": "市政厅广场·出发", "en-US": "City Hall Start" },
+    "description": { "zh-CN": "镀金年代之旅的出发地，经过或踩中都加薪", "en-US": "Start of the Gilded Age tour; bonus on pass/land" },
+    "destinations": [],
+    "regionId": "r1",
+    "timezone": 0,
+    "behaviorPass": "start-bonus",
+    "behaviorLand": "start-bonus"
+  }
+]
