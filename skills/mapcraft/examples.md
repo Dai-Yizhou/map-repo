@@ -2,6 +2,7 @@
 
 > 每个示例都先给**人的意图**，再给**JSON**，再给**效果复述**——Agent 生成任何东西前必须先把意图→效果复述给人类确认（见 `mapcraft.md` 的"先对齐后实现"）。
 > schema 以 `spec.md` 为准；示例里的灵感字段一律是**已声明**字段，不发明新字段。
+> **JSON 是 Agent 落地用的配置语法，不向协作者展示**：对齐/叙述时一律用自然语言/数学式/伪代码描述效果（含 valueModifiers 的 `numExpr` AST、behavior 的 `$ref` 算术，见 `spec.md` §4 协作约束），确认后才落成 JSON。
 
 ---
 
@@ -173,7 +174,39 @@
 
 ---
 
-## 7. 一图一目录 + NOTES.md 最小模板
+## 7. valueModifiers 数值联动（D8，已实现）
+
+让 `price`/`rent`/`upgradeCost`/`teleportDestinations[].cost`/`investmentTriggers[].delta`/`jailCooldown`/`jailCost`/`repairCost` 随状态联动（详见 `spec.md` §4）。放在 map-meta 的 `valueModifiers`，**同 `base` 只一条**，结果为覆盖。
+
+**例 1：地价随区域繁荣联动**（繁荣越高价越贵：`price.player.money = 原价 − pros×50`）
+```jsonc
+{ "scope": { "cellType": "property", "base": "price" },
+  "calc": { "player": { "money": { "$op": "sub", "args": [
+      { "$ref": "base.player.money" },
+      { "$op": "mul", "args": [ { "$ref": "region.uct.pros" }, 50 ] } ] } } } }
+```
+
+**例 2：夜晚租金上浮、越多股东越贵**（`region.time`：白天=0 / 夜晚=1）
+```jsonc
+{ "scope": { "cellType": "property", "base": "rent" },
+  "calc": { "player": { "money": { "$op": "add", "args": [
+      { "$op": "if", "args": [ { "$op": "eq", "args": [ { "$ref": "region.time" }, 1 ] },
+        { "$op": "round", "args": [ { "$op": "mul", "args": [ { "$ref": "base.player.money" }, 1.25 ] } ] },
+        { "$ref": "base.player.money" } ] },
+      { "$op": "mul", "args": [ { "$ref": "curCell.ownerCount" }, 2 ] } ] } } } }
+```
+
+**例 3：number 字段**——入狱冷却 clamp（`jailCooldown = clamp(原值×3, 8000, 9000)`）
+```jsonc
+{ "scope": { "cellType": "jail", "base": "jailCooldown" },
+  "calc": { "$op": "clamp", "args": [ { "$op": "mul", "args": [ { "$ref": "base" }, 3 ] }, 8000, 9000 ] } }
+```
+
+**注意**：运算结果里"玩家支付为负"的方向约定不变——这里只是把数值变贵/变便宜，符号仍应写负（支出）或正（收入）。若要"增量"而非"覆盖"，在表达式里用 `base` 显式 `$add`。
+
+---
+
+## 8. 一图一目录 + NOTES.md 最小模板
 
 ```text
 maps/<图名>/

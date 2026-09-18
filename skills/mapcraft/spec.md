@@ -87,7 +87,13 @@
       "exemptBelow": 0,                                 // 总持股量低于该值免（0=不免）
       "taxInterval": 900000
     }
-  }
+  },
+
+  // —— 数值联动（D8，已实现，可选）：让数值随状态变量联动，详见 §4 ——
+  "valueModifiers": [
+    { "scope": { "cellType": "property", "base": "price" },
+      "calc": { "player": { "money": { "$op": "sub", "args": [ { "$ref": "base.player.money" }, { "$op": "mul", "args": [ { "$ref": "region.uct.pros" }, 50 ] } ] } } } }
+  ]
 }
 ```
 
@@ -99,6 +105,7 @@
 - `regions[]` **不**记录所辖格子（由各格 `regionId` 聚合）、**无颜色概念**。
 - **昼夜（`dayNightCycle` 与可选 `dayNight`）**：`dayNightCycle` 只决定周期分钟数；区域繁荣初值来自 `regions[].initial.pros`。**可选的 `dayNight`** 在切换白天/夜晚时对区域字段各施加一次 UCT 增量（`day:{region:{...}}` / `night:{region:{...}}`，符号写在数据里），**属于地图字段，可直接配置**。除此之外的"衰减/恢复系数、更新频率、繁荣度对租金/事件概率的影响系数"属于**服务端配置**；协作者**不得臆造** `nightDecayFactor` 之类的字段，若有需要上报开发者。
 - **实时榜单（可选 `ranking`）**：`{ enabled, topN, refreshMs, score:{ constant, player:{<字段>→权重}, region:{<字段>→权重} } }`。未配置则不启用榜单。
+- **数值联动（可选 `valueModifiers`）**：见 §4。让 `price`/`rent`/`upgradeCost`/`teleportDestinations[].cost`/`investmentTriggers[].delta`/`jailCooldown`/`jailCost`/`repairCost` 随 `region.uct.*`/`region.time`/`player.uct.*`/`team.*`/`curCell.*` 联动。**同 `base` 只允许一条规则**（多条会因歧义被 lint 拒绝）。
 
 ---
 
@@ -231,7 +238,77 @@ theme(设计令牌 id，string 必填)
 
 ---
 
-## 4. 行为 JSON（behaviorLand / behaviorPass）
+## 4. 数值联动 valueModifiers（D8，已实现）
+
+弥补"只有 behavior 能引用变量"的缺口：让**静态数值字段在结算/展示时随世界状态联动**。定义在 map-meta 的 `valueModifiers`（全局规则表，**不做 per-cell 声明**）。求值两端同构（`@game/shared`，`resolveField`），确定、可 lint。
+
+**协作约束（不暴露语法）**：`calc` 的 `numExpr`/`uctValue` AST（§4.2）只作我内部落地用，**不向协作者展示**。对齐效果时用**自然语言 / 数学式 / 伪代码**（例："夜晚租金上浮 25%，股东越多越贵"）复述，确认后才落成 JSON；其他有复杂语法的配置项（如行为 `$ref` 算术、`investmentTriggers[].on`）同理。`$ref` 引用的合法锚在 §4.3 表中（越界引用由 lint 拒绝，不臆造锚）。
+
+**out of scope（留给行为引擎，不进 modifier）**：随机数、查询函数（最近玩家/距离/排行）、"地产集合/垄断组"等跨格概念——这些仍走 behavior（§5），不写进 `valueModifiers`。
+
+**客户端展示边界**：客户端悬浮展示**服务端权威 final**，`base → final` 仅作摘要提示、**不暴露计算式**；可与服务端同构求值做乐观显示，服务端在结算 ack 校正。
+
+### 4.1 规则结构
+
+```jsonc
+{ "id": "可选-id", "scope": { "cellType": "property", "base": "price" }, "calc": <Calc> }
+```
+- `scope.base` = 作用到的**静态字段名**（标识维度，非取值机制）。
+- `calc`：number 字段 → 单个 `numExpr`；UCT 字段 → `uctValue`。
+- **同 `base` 只允许一条规则**（重叠歧义 → lint 拒绝）；不同 `base` 各一条。
+- 结果 = **覆盖**：`calc` 显式列出的子字段替换为新值，**未列出的子字段保持原 base 值（不归零）**。想要增量效果，在表达式中用自指 `base` 显式 `$add`。（如 `price` 只改 `player.money`，`player.credit`/`region.*` 沿用原值。）
+
+### 4.2 数值表达式 `numExpr`（统一前缀式）
+
+```
+node := number                       // 字面量
+      | { "$ref": "<锚路径>" }        // 变量引用
+      | { "$op": "<op>", "args": [ node, ... ] }
+```
+运算符（闭合集合）：算术 `add`(≥2) `sub`(≥2) `mul`(≥2) `div`(2) `neg`(1) `abs`(1) `min` `max` `round`(1) `clamp`(3)；条件 `gte` `lte` `eq` `and` `if`(3)。
+UCT 写法：`uctValue := { player?: { <fieldId>: numExpr }, region?: { <fieldId>: numExpr } }`。**number 字段 → 单一 `numExpr`**（如 `jailCooldown`）。
+
+### 4.3 可引用变量（refs，固定锚；叶节点字段名来自 `valueFieldDefinitions`）
+
+| 锚 | 相对谁 | 说明 |
+|---|---|---|
+| `base`（保留字） | 目标字段自身 | 当前静态值（写入前）。number 字段直接整体引用（如 `{ "$ref": "base" }`）；UCT 字段须钻子字段（如 `base.player.money`），不带子字段整体只用于期待 UCT 的位置 |
+| `player.uct.<fieldId>` | 付款方玩家 | 其 player 作用域子字段（购买=买家、付租=租客、保释=进监者、修复=所有者） |
+| `team.uct.<fieldId>` | 所在团队 | 成员该字段**算术均值**；`memberCount==0` 或字段未声明 → lint 拒绝 |
+| `team.memberCount` | 同上 | number |
+| `region.uct.<fieldId>` | 目标格所在区域 | region 作用域子字段（如 `pros`/`env`） |
+| `region.time` | 同上 | number：昼夜环境时刻，**白天=0 / 夜晚=1**（驱动 §4.4 昼夜联动） |
+| `curCell.level` | 目标格 | number |
+| `curCell.ownerCount` | 目标格 | number |
+
+> 引用 UCT（`$ref` 或自指 `base`）必须带子字段才得 `number`；不带子字段只能作 UCT 整体（顶层写入）。
+> 单调性：对 `region.uct.*`/`curCell.*`/`player.*` 尽量设计为单调增/减（lint 只做符号提示，非强校验）。
+
+### 4.4 允许的 base（按 cellType）
+
+| cellType | base 字段 | 类型     |
+|---|---|-------|
+| `property` | `price`、`rent[]`、`upgradeCost[]` | UCT     |
+| `transport` | `teleportDestinations[].cost` | UCT     |
+| `investment` | `price`、`investmentTriggers[].delta` | UCT     |
+| `jail` | `jailCooldown`(number)、`jailCost` | numbUCT |
+| `monument` | `repairCost` | UCT     |
+
+空/supply/event 无 base（走 behavior）。数组字段（`rent[level]`、`teleportDestinations[i].cost`、`investmentTriggers[j].delta`）= 作用在**被消费的那个元素**，自指 `base` 取当前元素。
+
+### 4.5 生命周期与 behavior 的关系
+
+- **变更类**（实付、租金、升级费、传送费、保释金、修复费、投资 delta）：结算/购买时刻 `resolveField` 一次并固定，随 ack 返回实付。
+- **展示类**：按当前上下文求值。
+- **与 behavior 不相交**：behavior 只在 `supply/event`（无 base），valueModifiers 只作用于有 base 的格子；两套不共享字段、不叠加、无生效顺序冲突。
+
+### 4.6 已实现的行为引擎 `$ref`（behavior 内变量，v2）
+
+behavior JSON 里同样支持 `$ref` 变量（`$actor.money`、`$region.pros`、`$cell.id`、`$nearestPlayer` 等），可用于**概率或效果**（如税收/事件影响）。behavior 表达式为受限算术（`$ref` + `+ - * / min/max`，白名单），格式见 §5。
+
+---
+
+## 5. 行为 JSON（behaviorLand / behaviorPass）
 
 被 `map.json` 的 `behaviorPass` / `behaviorLand` 按 **id** 引用。同图的行为 JSON 放该图 `behaviors/` 目录。
 
@@ -260,13 +337,13 @@ theme(设计令牌 id，string 必填)
 }
 ```
 
-### 4.1 效果选中（独立/互斥两类**分开触发**）
+### 5.1 效果选中（独立/互斥两类**分开触发**）
 
 - 执行时**先处理独立效果**（`exclusive:false`，各按 `weight` 独立判定，可多命中），**再处理互斥组**（所有 `exclusive:true` 归一组，`weight` 归一后仅命中其一）。
 - `weight` 可为 `number | {"$ref":"..."}`；互斥组全 0 视为均等。
 - `target` 已**下移到每个 op**，必填，无默认掩盖。
 
-### 4.2 ops 三分支（每项必带 `type` 与 `target`）
+### 5.2 ops 三分支（每项必带 `type` 与 `target`）
 
 - **`value`**：`delta` 为 UCT，作用于解析后的目标玩家/区域，逐字段 `+=`。
 - **`ownership`**：`action` = `acquireShare`（须明确单个来源格）| `loseShare`（可 `cells[]` 逐格，或用 `scope` 全量）。
@@ -275,11 +352,11 @@ theme(设计令牌 id，string 必填)
     - `scope`：`"all"`（property+investment）| `"all-property"` | `"all-investment"` —— 失去 target 在该范围内的全部股份（忽略 cells）。
 - **`position`**：`action` = `moveTo`（沿有向边走动，会触发途经格的经过钩子）| `teleport`（瞬移，到达后作为新"踩中"结算）；`cellId` = 目标格（数字或 `$ref`）。
 
-### 4.3 目标 target（op 级，必填）
+### 5.3 目标 target（op 级，必填）
 
 `single`（触发者=`$actor`）| `team`（触发者队伍）| `region`（触发者所在区域全部玩家）| `globe`（全部玩家）| `{ "$ref": "..." }`（运行时变量解析出的玩家）。
 
-### 4.4 运行时引用 `{$ref:"..."}`
+### 5.4 运行时引用 `{$ref:"..."}`
 
 - **上下文绑定**：`$actor`、`$target`、`$map`、`$cell`、`$region`；字段读取 `$actor.<fieldId>`（如 `$actor.money`、`$region.pros`）。
 - **白名单解析器**（需计算量，仅白名单）：如 `$nearestPlayer`（距 `$actor` 最近的其他玩家）、`$randomShareholder`（任一股东）。
@@ -288,7 +365,7 @@ theme(设计令牌 id，string 必填)
 
 ---
 
-## 5. 快速失败（配置错误，不静默回退）
+## 6. 快速失败（配置错误，不静默回退）
 
 以下任一 = 配置错误，**报错→定位→修正**：
 
