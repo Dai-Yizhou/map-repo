@@ -123,7 +123,7 @@
 ```
 
 **Agent 须知（不臆测，昼夜）**：
-- 昼夜周期只由 `dayNightCycle`（分钟）决定；区域繁荣初值来自 `regions[].initial.pros`。
+- 昼夜周期只由 `dayNightCycle`（分钟，缺省 15）决定；可选 `dayNightRatio`（0,1）定白昼占比，缺省 0.5（各占一半）。区域繁荣初值来自 `regions[].initial.pros`。
 - 昼夜切换时对区域数值的统一增量由可选字段 **`dayNight: { day:{region}, night:{region} }`** 控制，增量写在数据里（如 `day:{region:{pros:20}}`、`night:{region:{pros:-20}}`，见示例顶部的 map-meta）。这是地图字段，**可直接配置**。
 - 除此之外的"衰减/恢复系数、更新频率、繁荣度对租金/事件的影响系数"仍是**服务端配置**（非地图字段）。协作者想自定义时必须**上报开发者**，不要在 map-meta/map.json 里发明 `nightDecayFactor` 之类字段。
 - 每次给 `pros` 设初值前，先向人类确认"期望的初值"与"是否要自定义衰减节奏"，避免臆测。

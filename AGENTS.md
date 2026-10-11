@@ -11,6 +11,7 @@
 
 1. **读本文件**（AGENTS.md），了解仓库边界与入口。
 2. **加载制图 Skill**：`skills/mapcraft/mapcraft.md` —— 它是完整工作流的唯一权威驱动。按文件内索引，需要时可加载同目录 `spec.md`（规范详解）与 `examples.md`（充分示例）。
+   - 例外：若你是**纯聊天 AI**（无仓库/git 能力），改加载 `skills/mapchat/mapchat.md`——只做地图内容构思与 NOTES.md 文本维护，不产出 JSON 配置。
 3. 按 `mapcraft.md` 的 **5 步流程**执行。**先精确对齐需求与效果，确认"完整、无歧义"后才生成/写实现，不允许臆测。**
 4. 完成后同步更新该图目录的注释文档 `NOTES.md`。
 

@@ -65,6 +65,7 @@ description: 协作者地图制作流程。触发词："我要一个格子/地�
 
 - **昼夜联动**：`map-meta.dayNight` 配昼/夜切换时的区域 UCT 增量；要"数值随昼/夜变"用 `valueModifiers` 读变量 `region.time`（白天=0 / 夜晚=1）。昼夜周期由 `dayNightCycle` 指定。
 - **税收**：① **数值联动**——用 `valueModifiers` 读变量，对整个作用域统一生效（对 `client` 不暴露计算式；建议设计为随变量单调增/减；一条规则可用多个变量；支持 `if` 条件）；② 在 **behavior** 里配变量，可作用于**概率或效果**。
+- **破产口径（负债式）**：`valueFieldDefinitions[].min` 是**破产阈值**而非扣减下限——扣款可扣成负数，`current < min` 即破产（先结算后判定）。主动扣款余额不足会先给"会破产"预览、确认后才执行；租金/税收等被动扣款无预检、全额结算。设计数值初值与扣款量级时按"可负债"思考。
 - **合租绕平均分**：`property/investment` 收益默认对可用股东**平均分**；需绕过时，把数值乘上 `ownerCnt`（对应 `curCell.ownerCount`）。
 - **隐藏格**：把要藏的格子设为 `transport` 并以 **0 cost** 指向常规格，**确保无入边**（无入边合法，0 cost 仍显示 `tele-btm`）。到达方式：① behavior 低概率/带变量概率触发传送；② 用 `valueModifiers` 挡掉多数玩家经 `transport` 前往（小心别误伤常规 `transport`）。
 - **用 `valueModifiers` 调指定格子**：用条件判断识别指定的 `base` 值并据此计算。

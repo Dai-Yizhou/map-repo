@@ -46,6 +46,7 @@
   "name": { "zh-CN": "示例地图", "en-US": "Example Map" },
 
   // —— 数值字段架构（UCT 全集的"名称/作用域/上下限"来源，不含 current）——
+  // 注意：min 是"破产阈值"而非扣减下限（负债式破产，见要点）；max 是数值上界
   "valueFieldDefinitions": [
     { "id": "money",  "name": { "zh-CN": "财产", "en-US": "Money" },      "scope": "player", "min": 0 },
     { "id": "credit", "name": { "zh-CN": "信用", "en-US": "Credit" },     "scope": "player", "min": 0 },
@@ -62,8 +63,9 @@
     { "id": "r1", "name": { "zh-CN": "东区", "en-US": "East" }, "initial": { "region": { "pros": 50 } } }
   ],
 
-  // —— 昼夜周期（分钟，整数）——
+  // —— 昼夜周期（分钟，整数，缺省 15）与白昼占比（可选，缺省 0.5 即白昼 06:00-18:00）——
   "dayNightCycle": 24,
+  "dayNightRatio": 0.5,
 
   // —— 昼夜 UCT 增量（可选）：切到白天/夜晚时对区域字段各施加一次增量，符号写在数据里 ——
   "dayNight": { "day": { "region": { "pros": 20 } }, "night": { "region": { "pros": -20 } } },
@@ -93,7 +95,10 @@
   "valueModifiers": [
     { "scope": { "cellType": "property", "base": "price" },
       "calc": { "player": { "money": { "$op": "sub", "args": [ { "$ref": "base.player.money" }, { "$op": "mul", "args": [ { "$ref": "region.uct.pros" }, 50 ] } ] } } } }
-  ]
+  ],
+
+  // —— 长期离线清理（可选，未配置则关闭）：回收离线玩家占用的股东位 ——
+  "inactivityCleanup": { "thresholdMs": 604800000, "sweepIntervalMs": 60000 }
 }
 ```
 
@@ -101,9 +106,12 @@
 
 **i18n 格式合规（中文工作流）**：所有 `name`（含 `valueFieldDefinitions[].name`、`regions[].name`）、`description` 必须保持 i18n 对象结构 `{"zh-CN": "…", "en-US": ""}`。**中文工作流不强制填全**：`zh-CN` 必填，`en-US` 可留空（`""`）供多语言后续填充。**禁止**写成裸字符串（如 `"name": "起点"`）——那是格式错误。AI 生成时自动补全 `{zh-CN, en-US}` 外壳。
 
-- `valueFieldDefinitions` 只描述字段架构（`min/max` 用于截断）；初值由 `playerInitial`（玩家）与 `regions[].initial`（区域）提供，**不重复**。
+- `valueFieldDefinitions` 只描述字段架构；初值由 `playerInitial`（玩家）与 `regions[].initial`（区域）提供，**不重复**。
+- **min = 破产阈值（负债式破产，主仓库 2026-10 新口径）**：`min` **不是扣减下限**——数值允许被扣成**负数**；任一 `current < min` 即触发破产。判定推迟到当前操作完整结算之后（"先结算、再破产"）。**主动操作**（购买/升级/传送/保释等）余额不足时服务端先给 `would_bankrupt` 预览、玩家确认后才执行（负债式二次确认）；**被动扣款**（租金、税收）无预检、按整数下限全额结算，扣成负数即破产。设计 `min` 与扣款量级时按"可负债"口径思考，勿再按"钳在 min 触底"理解。
+- **租金全额结算**：付款方余额不足时不再拒付，实扣至负数并触发破产；股东照常收到**全额**租金（不受付款方 shortfall 影响）。
 - `regions[]` **不**记录所辖格子（由各格 `regionId` 聚合）、**无颜色概念**。
-- **昼夜（`dayNightCycle` 与可选 `dayNight`）**：`dayNightCycle` 只决定周期分钟数；区域繁荣初值来自 `regions[].initial.pros`。**可选的 `dayNight`** 在切换白天/夜晚时对区域字段各施加一次 UCT 增量（`day:{region:{...}}` / `night:{region:{...}}`，符号写在数据里），**属于地图字段，可直接配置**。除此之外的"衰减/恢复系数、更新频率、繁荣度对租金/事件概率的影响系数"属于**服务端配置**；协作者**不得臆造** `nightDecayFactor` 之类的字段，若有需要上报开发者。
+- **昼夜（`dayNightCycle` 与可选 `dayNight`）**：`dayNightCycle` 决定周期分钟数（缺省 15）；**可选 `dayNightRatio`**（0,1 开区间）决定白昼占比，缺省 0.5（白昼 06:00-18:00，12:00 为白昼中点）。区域繁荣初值来自 `regions[].initial.pros`。**可选的 `dayNight`** 在切换白天/夜晚时对区域字段各施加一次 UCT 增量（`day:{region:{...}}` / `night:{region:{...}}`，符号写在数据里），**属于地图字段，可直接配置**。除此之外的"衰减/恢复系数、更新频率、繁荣度对租金/事件概率的影响系数"属于**服务端配置**；协作者**不得臆造** `nightDecayFactor` 之类的字段，若有需要上报开发者。
+- **长期离线清理（可选 `inactivityCleanup`）**：`{ thresholdMs, sweepIntervalMs? }`。离线超过 `thresholdMs` 的玩家释放全部股份并置为破产态（不删号），用于回收被离线玩家永久占用的股东位；未配置则关闭。设计股东位上限（`maxOwnerCount`）时可把本机制纳入饱和考量。
 - **实时榜单（可选 `ranking`）**：`{ enabled, topN, refreshMs, score:{ constant, player:{<字段>→权重}, region:{<字段>→权重} } }`。未配置则不启用榜单。
 - **数值联动（可选 `valueModifiers`）**：见 §4。让 `price`/`rent`/`upgradeCost`/`teleportDestinations[].cost`/`investmentTriggers[].delta`/`jailCooldown`/`jailCost`/`repairCost` 随 `region.uct.*`/`region.time`/`player.uct.*`/`team.*`/`curCell.*` 联动。**同 `base` 只允许一条规则**（多条会因歧义被 lint 拒绝）。
 
