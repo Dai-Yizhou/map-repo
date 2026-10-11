@@ -89,6 +89,7 @@ description: 协作者地图制作流程。触发词："我要一个格子/地�
 
 ## 给 Agent 的细节
 
+- **机制认知底座（与 mapchat 共用）**：`skills/shared/mechanics.md`——能力边界的世界观，给方案/对齐效果前先过一遍，构思不越出配置能力
 - 字段/UCT/行为 JSON/校验细则：`spec.md`
 - 完整示例（含彩蛋、昼夜、注释文档模板）：`examples.md`
 - 人话版协作约定：`docs/COLLABORATION.md`
